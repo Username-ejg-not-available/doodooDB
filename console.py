@@ -123,7 +123,8 @@ class Console:
         return self.pad_right(self.pad_left(text,lw,padding),width,padding)
 
     def grid(self,gridvals,dynamic_width: bool = False):
-        if gridvals == []: return
+        if gridvals == []: return "", self
+        out = ""
         numcols = max(map(lambda x: len(x),gridvals))
         if dynamic_width:
             colwidths = [0 for _ in range(numcols)]
@@ -139,7 +140,7 @@ class Console:
             head += self.pad_right("",colwidths[x]-1,Console.Bars["HORIZ"])
             if x == numcols-1: head += Console.Bars["TOP_RIGHT"]
             else: head += Console.Bars["TOP_COL_JOIN"]
-        print(head)
+        out += head + "\n"
         for x in gridvals:
             row = ""
             for y in range(len(x)):
@@ -147,14 +148,14 @@ class Console:
             if len(x) < numcols:
                 for y in range(numcols - len(x)):
                     row += self.pad_right(Console.Bars["VERT"],colwidths[y+len(x)]," ")
-            print(row + Console.Bars["VERT"])
+            out += row + Console.Bars["VERT"] + "\n"
         tail = Console.Bars["BOTTOM_LEFT"]
         for x in range(numcols):
             tail += self.pad_right("",colwidths[x]-1,Console.Bars["HORIZ"])
             if x == numcols-1: tail += Console.Bars["BOTTOM_RIGHT"]
             else: tail += Console.Bars["BOTTOM_COL_JOIN"]
-        print(tail)
-        return self
+        out += tail + "\n"
+        return out, self
 
 #c = Console()
 #c.grid([["q","r","titty"],["zoinks"],["Jinkies","t"]], True)

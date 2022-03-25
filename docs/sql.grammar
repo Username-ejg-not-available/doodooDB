@@ -1,0 +1,22 @@
+query := SELECT idlist FROM idlist #1
+    | SELECT WILDCARD FROM idlist
+idlist := ID #2
+    | idlist COMMA ID #3
+
+###
+
+requires {
+    import parser.RelAlgeTree as RAT
+}
+
+#1 {
+    p.semstack = [RAT.Projection(p.semstack[1], p.semstack[0])] + p.semstack[2:]
+}
+
+#2 {
+    p.semstack = [[p.currentToken]] + p.semstack
+}
+
+#3 {
+    p.semstack = [[p.currentToken] + p.semstack[0]] + p.semstack[1:]
+}

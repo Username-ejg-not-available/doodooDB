@@ -1,7 +1,5 @@
 import table
 
-_stack = []
-
 def interpret(sql):
     cols = []
     tables = []
