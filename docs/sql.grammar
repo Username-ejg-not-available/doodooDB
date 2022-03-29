@@ -1,7 +1,34 @@
 query := SELECT idlist FROM idlist #1
-    | SELECT WILDCARD FROM idlist
+    | SELECT WILDCARD FROM idlist #23
+    | SELECT idlist FROM idlist WHERE predicate #24
+    | SELECT WILDCARD FROM idlist WHERE predicate #25
 idlist := ID #2
     | idlist COMMA ID #3
+predicate := w PLUS w #4
+    | w MINUS w #5
+    | w
+w := x WILDCARD x #6
+    | x DIVIDE x #7
+    | x EXPONENT x #8
+    | x
+x := y EQUALS y #9
+    | y NEQUALS y #10
+    | y LESS y #11
+    | y LESSEQ y #12
+    | y GREATER y #13
+    | y GREATEREQ y #14
+    | y
+y := z AND z #15
+    | z OR z #16
+    | z
+z := NOT term #17
+    | MINUS term #18
+    | PLUS term #19
+    | term
+term := LPAREN predicate RPAREN
+    | NUMBER #20
+    | ID #21
+    | BOOL #22
 
 ###
 
@@ -10,7 +37,14 @@ requires {
 }
 
 #1 {
-    p.semstack = [RAT.Projection(p.semstack[1], p.semstack[0])] + p.semstack[2:]
+    tables = p.semstack[0]
+    if len(tables) == 1:
+        p.semstack = [RAT.Projection(p.semstack[1], p.semstack[0])] + p.semstack[2:]
+    else:
+        t = RAT.Identifier(tables[0])
+        for table in tables[1:]:
+            t = RAT.CrossProduct(t, RAT.Identifier(table))
+        p.semstack = [RAT.Projection(p.semstack[1], t)] + p.semstack[2:]
 }
 
 #2 {
@@ -18,5 +52,117 @@ requires {
 }
 
 #3 {
-    p.semstack = [[p.currentToken] + p.semstack[0]] + p.semstack[1:]
+    p.semstack = [p.semstack[0] + [p.currentToken]] + p.semstack[1:]
+}
+
+#4 {
+    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '+')] + p.semstack[2:]
+}
+
+#5 {
+    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '-')] + p.semstack[2:]
+}
+
+#6 {
+    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '*')] + p.semstack[2:]
+}
+
+#7 {
+    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '/')] + p.semstack[2:]
+}
+
+#8 {
+    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '**')] + p.semstack[2:]
+}
+
+#9 {
+    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '=')] + p.semstack[2:]
+}
+
+#10 {
+    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '<>')] + p.semstack[2:]
+}
+
+#11 {
+    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '<')] + p.semstack[2:]
+}
+
+#12 {
+    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '<=')] + p.semstack[2:]
+}
+
+#13 {
+    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '>')] + p.semstack[2:]
+}
+
+#14 {
+    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '>=')] + p.semstack[2:]
+}
+
+#15 {
+    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], 'AND')] + p.semstack[2:]
+}
+
+#16 {
+    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], 'OR')] + p.semstack[2:]
+}
+
+#17 {
+    p.semstack = [RAT.Unary(p.semstack[0], 'NOT')] + p.semstack[1:]
+}
+
+#18 {
+    p.semstack = [RAT.Unary(p.semstack[0], '-')] + p.semstack[1:]
+}
+
+#19 {
+    p.semstack = [RAT.Unary(p.semstack[0], '+')] + p.semstack[1:]
+}
+
+#20 {
+    p.semstack = [RAT.Number(p.currentToken)] + p.semstack
+}
+
+#21 {
+    p.semstack = [RAT.Identifier(p.currentToken)] + p.semstack
+}
+
+#22 {
+    p.semstack = [RAT.Boolean(p.currentToken)] + p.semstack
+}
+
+#23 {
+    tables = p.semstack[0]
+    t = RAT.Identifier(tables[0])
+    if len(tables) == 1:
+        p.semstack = [RAT.Identifier(t)] + p.semstack[1:]
+    else:
+        for table in tables[1:]:
+            t = RAT.CrossProduct(t, RAT.Identifier(table))
+        p.semstack = [t] + p.semstack[1:]
+}
+
+#24 {
+    tables = p.semstack[1]
+    t = RAT.Identifier(tables[0])
+    if len(tables) == 1:
+        sel = RAT.Selection(t, p.semstack[0])
+        p.semstack = [RAT.Projection(p.semstack[2], sel)] + p.semstack[3:]
+    else:
+        for table in tables[1:]:
+            t = RAT.CrossProduct(t, RAT.Identifier(table))
+        sel = RAT.Selection(t, p.semstack[0])
+        p.semstack = [RAT.Projection(p.semstack[2], sel)] + p.semstack[3:]
+}
+
+#25 {
+    tables = p.semstack[1]
+    t = RAT.Identifier(tables[0])
+    if len(tables) == 1:
+        p.semstack = [RAT.Selection(t, p.semstack[0])] + p.semstack[2:]
+    else:
+        for table in tables[1:]:
+            t = RAT.CrossProduct(t, RAT.Identifier(table))
+        sel = RAT.Selection(t, p.semstack[0])
+        p.semstack = [RAT.Selection(t, p.semstack[0])] + p.semstack[2:]
 }

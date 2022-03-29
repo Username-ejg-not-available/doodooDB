@@ -3,9 +3,26 @@ FROM|from FROM
 WHERE|where WHERE
 (NATURAL|natural)\_(JOIN|join) NATJOIN
 DISTINCT|distinct DISTINCT
-[_a-zA-Z][_a-zA-Z0-9]* ID
+TRUE|true|FALSE|false BOOL
+[0-9]+ NUMBER
+[_a-zA-Z][\._a-zA-Z0-9]* ID
 , COMMA
 \* WILDCARD
 ; SEMICOLON
+> GREATER
+>= GREATEREQ
+< LESS
+<= LESSEQ
+\+ PLUS
+\- MINUS
+\*\* EXPONENT
+/ DIVIDE
+= EQUALS
+<> NEQUALS
+\( LPAREN
+\) RPAREN
+AND|and AND
+OR|or OR
+NOT|not NOT
 [\_\n] (SKIP)
 . (ERR) "Bad token"
