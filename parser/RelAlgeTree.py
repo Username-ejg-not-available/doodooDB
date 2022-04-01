@@ -59,6 +59,12 @@ class Number(Predicate):
     def __init__(self, num) -> None:
         self.num = num
 
+    def __repr__(self):
+        return str(self.num)
+
 class Boolean(Predicate):
     def __init__(self, val) -> None:
         self.val = val
+
+    def __repr__(self):
+        return str(self.val)

@@ -1,6 +1,9 @@
 import doodooTypes
 import console
 import uuid
+import parser.RelAlgeTree as RAT
+
+tables = {}
 
 class Cell:
     def __init__(self, data, coldef):
@@ -61,19 +64,20 @@ class Table:
         self.colnames = [ Column(name, x) for x in self.schema.schema ]
         self.columns = { x: [] for x in self.schema.schema }
         self.rows = []
+        tables.update({ name: self })
 
     def insert(self, entry):
         for x in self.schema.schema:
             if (Schema.NULLNT in self.schema.schema[x] and Schema.INCREMENT not in self.schema.schema[x]) and x not in entry:
                 raise Exception("Missing Column \'" + str(x) + "\': " + str(entry))
 
-        if self.keyInTable(entry):
-            raise Exception("Duplicate primary key: " + str(entry))
-
         for x in entry:
             if x not in self.schema.schema: raise Exception("Invalid column name: "+x)
             if not isinstance(entry[x], self.schema.schema[x][0]) and entry[x] != Schema.NULL: raise Exception("Bad type in column: "+x)
 
+        if self.keyInTable(entry):
+            raise Exception("Duplicate primary key: " + str(entry))
+        
         for x in self.schema.schema:
             if x in self.schema.pk and Schema.INCREMENT in self.schema.schema[x]:
                 if x in entry:
@@ -85,7 +89,7 @@ class Table:
                     def red(y, z): 
                         if y == Schema.NULL and z == Schema.NULL: return 0
                         if y == Schema.NULL: return z
-                        if z == Schema.Null: return y
+                        if z == Schema.NULL: return y
                         return max(y, z)
                     self.columns[x] += [reduce(red, self.columns[x]) + 1]
             else: 
@@ -103,18 +107,72 @@ class Table:
     def keyInTable(self, entry):
         theKey = []
         for key in self.schema.pk:
-            if Schema.INCREMENT in self.schema.schema[key]: return False
+            if Schema.INCREMENT in self.schema.schema[key] and key not in entry: return False
             if theKey == []: theKey = entry[key]
-            else: theKey = list(zip(entry[key], theKey))
+            else: theKey = (entry[key], theKey)
         return theKey in self.usedKeys()
 
     def projection(self, *cols):
-        schema = dict(filter(lambda x: x[0] in cols, self.schema.schema.items()))
+        # get schema in correct order
+        schema = {}
+        for x in cols:
+            if x in self.schema.schema:
+                schema[x] = self.schema.schema[x]
         res = Table(str(uuid.uuid4()), schema)
+        # insert all the rows with only the correct columns
         for r in self.rows:
             res.insert(dict(filter(lambda x: x[0] in cols, r.items())))
         res.colnames = list(filter(lambda x: x.getPartialName() in schema, self.colnames))
         return res
+
+    def selection(self, predicate):
+        res = Table(str(uuid.uuid4()), self.schema.schema)
+        for r in self.rows:
+            if self._interpPred(r, predicate):
+                res.insert(r)
+        return res
+
+    def _interpPred(self, row, pred) -> bool:
+        if isinstance(pred, RAT.Boolean):
+            return pred.val
+        elif isinstance(pred, RAT.Identifier):
+            return row[pred.id]
+        elif isinstance(pred, RAT.Number):
+            return pred.num
+        elif isinstance(pred, RAT.Unary):
+            if pred.operator == '-':
+                return -self._interpPred(row, pred.exp)
+            elif pred.operator == '+':
+                return abs(self._interpPred(row, pred.exp))
+            elif pred.operator == 'NOT':
+                return not self._interpPred(row, pred.exp)
+        elif isinstance(pred, RAT.Binary):
+            if pred.operator == '+':
+                return float(self._interpPred(row, pred.left)) + float(self._interpPred(row, pred.right))
+            elif pred.operator == '-':
+                return float(self._interpPred(row, pred.left)) - float(self._interpPred(row, pred.right))
+            elif pred.operator == '*':
+                return float(self._interpPred(row, pred.left)) * float(self._interpPred(row, pred.right))
+            elif pred.operator == '/':
+                return float(self._interpPred(row, pred.left)) / float(self._interpPred(row, pred.right))
+            elif pred.operator == '>=':
+                return float(self._interpPred(row, pred.left)) >= float(self._interpPred(row, pred.right))
+            elif pred.operator == '<':
+                return float(self._interpPred(row, pred.left)) < float(self._interpPred(row, pred.right))
+            elif pred.operator == '>':
+                return float(self._interpPred(row, pred.left)) > float(self._interpPred(row, pred.right))
+            elif pred.operator == '<=':
+                return float(self._interpPred(row, pred.left)) <= float(self._interpPred(row, pred.right))
+            elif pred.operator == '=':
+                return float(self._interpPred(row, pred.left)) == float(self._interpPred(row, pred.right))
+            elif pred.operator == '<>':
+                return float(self._interpPred(row, pred.left)) != float(self._interpPred(row, pred.right))
+            elif pred.operator == '**':
+                return float(self._interpPred(row, pred.left)) ** float(self._interpPred(row, pred.right))
+            elif pred.operator == 'AND':
+                return bool(self._interpPred(row, pred.left)) and bool(self._interpPred(row, pred.right))
+            elif pred.operator == 'OR':
+                return bool(self._interpPred(row, pred.left)) or bool(self._interpPred(row, pred.right))
 
     def cross(self, other):
         sch = {}

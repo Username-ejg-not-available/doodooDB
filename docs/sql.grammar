@@ -135,7 +135,7 @@ requires {
     tables = p.semstack[0]
     t = RAT.Identifier(tables[0])
     if len(tables) == 1:
-        p.semstack = [RAT.Identifier(t)] + p.semstack[1:]
+        p.semstack = [t] + p.semstack[1:]
     else:
         for table in tables[1:]:
             t = RAT.CrossProduct(t, RAT.Identifier(table))
@@ -164,5 +164,5 @@ requires {
         for table in tables[1:]:
             t = RAT.CrossProduct(t, RAT.Identifier(table))
         sel = RAT.Selection(t, p.semstack[0])
-        p.semstack = [RAT.Selection(t, p.semstack[0])] + p.semstack[2:]
+        p.semstack = [sel] + p.semstack[2:]
 }
