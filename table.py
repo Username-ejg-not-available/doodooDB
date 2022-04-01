@@ -33,10 +33,10 @@ class Column:
         return ".".join(self.nameList[1:])
 
 class Schema:
-    NULL = "NULL"
-    NULLNT = "NULLNT"
-    PRIMARY_KEY = "PRIMARY_KEY"
-    INCREMENT = "INCREMENT"
+    NULL = "NULL\x18"
+    NULLNT = "NULLNT\x18"
+    PRIMARY_KEY = "PRIMARY_KEY\x18"
+    INCREMENT = "INCREMENT\x18"
 
     def __init__(self, schema):
         if not self.verify(schema): 
@@ -82,26 +82,27 @@ class Table:
             if x in self.schema.pk and Schema.INCREMENT in self.schema.schema[x]:
                 if x in entry:
                     self.columns[x] += [Cell(entry[x], self.schema.schema[x])]
-                elif self.columns[x] == []:
-                    self.columns[x] += [doodooTypes.getStartVal(self.schema.schema[x][0])]
+                elif self.rows == []:
+                    self.columns[x] += [Cell(doodooTypes.getStartVal(self.schema.schema[x][0]), self.schema.schema[x])]
                 else:
                     from functools import reduce
-                    def red(y, z): 
-                        if y == Schema.NULL and z == Schema.NULL: return 0
-                        if y == Schema.NULL: return z
-                        if z == Schema.NULL: return y
-                        return max(y, z)
-                    self.columns[x] += [reduce(red, self.columns[x]) + 1]
+                    def maxCell(col):
+                        maxx = 0
+                        for c in col:
+                            if c.data == Schema.NULL: continue
+                            if c.data > maxx: maxx = c.data
+                        return maxx
+                    self.columns[x] += [Cell(maxCell(self.columns[x]) + 1, self.schema.schema[x])]
             else: 
-                if x in entry: self.columns[x] += [entry[x]]
-                else: self.columns[x] += [Schema.NULL]
+                if x in entry: self.columns[x] += [Cell(entry[x], self.schema.schema[x])]
+                else: self.columns[x] += [Cell(Schema.NULL, self.schema.schema[x])]
         self.rows.append({ x: self.columns[x][len(self.columns[x]) - 1] for x in self.columns })
 
     def usedKeys(self):
         usedKeys = []
         for pk in self.schema.pk:
-            if usedKeys == []: usedKeys = self.columns[pk]
-            else: usedKeys = list(zip(self.columns[pk], usedKeys))
+            if usedKeys == []: usedKeys = list(map(lambda c: c.data, self.columns[pk]))
+            else: usedKeys = list(zip(list(map(lambda c: c.data, self.columns[pk])), usedKeys))
         return usedKeys
 
     def keyInTable(self, entry):
@@ -121,7 +122,7 @@ class Table:
         res = Table(str(uuid.uuid4()), schema)
         # insert all the rows with only the correct columns
         for r in self.rows:
-            res.insert(dict(filter(lambda x: x[0] in cols, r.items())))
+            res.insert(dict(map(lambda y: (y[0], y[1].data), filter(lambda x: x[0] in cols, r.items()))))
         res.colnames = list(filter(lambda x: x.getPartialName() in schema, self.colnames))
         return res
 
@@ -129,14 +130,16 @@ class Table:
         res = Table(str(uuid.uuid4()), self.schema.schema)
         for r in self.rows:
             if self._interpPred(r, predicate):
-                res.insert(r)
+                res.rows.append(r)
+                for c in res.colnames:
+                    res.columns[c.getPartialName()].append(r[c.getPartialName()])
         return res
 
     def _interpPred(self, row, pred) -> bool:
         if isinstance(pred, RAT.Boolean):
             return pred.val
         elif isinstance(pred, RAT.Identifier):
-            return row[pred.id]
+            return row[pred.id].data
         elif isinstance(pred, RAT.Number):
             return pred.num
         elif isinstance(pred, RAT.Unary):

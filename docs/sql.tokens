@@ -5,7 +5,6 @@ WHERE|where WHERE
 DISTINCT|distinct DISTINCT
 TRUE|true|FALSE|false BOOL
 [0-9]+ NUMBER
-[_a-zA-Z][\._a-zA-Z0-9]* ID
 , COMMA
 \* WILDCARD
 ; SEMICOLON
@@ -24,5 +23,6 @@ TRUE|true|FALSE|false BOOL
 AND|and AND
 OR|or OR
 NOT|not NOT
+[_a-zA-Z][\._a-zA-Z0-9]* ID
 [\_\n] (SKIP)
 . (ERR) "Bad token"
