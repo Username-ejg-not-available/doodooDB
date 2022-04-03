@@ -1,31 +1,87 @@
 
-class Algebra:
-    def __init__(self):
-        pass
+class SQL:
+    def __init__(self): pass
 
-class Projection(Algebra):
-    def __init__(self, cols, tree: Algebra):
-        self.columns = cols
-        self.subtree = tree
+class Drop(SQL):
+    def __init__(self, table):
+        self.table = table
 
     def __repr__(self):
-        return "PROJECT(" + ','.join(self.columns) + " FROM " + str(self.subtree) + ")"
+        return "Drop(" + str(self.table) + ")"
 
-class Selection(Algebra):
-    def __init__(self, tree: Algebra, predicate: Algebra):
+class Truncate(SQL):
+    def __init__(self, table):
+        self.table = table
+
+    def __repr__(self):
+        return "Truncate(" + str(self.table) + ")"
+
+class Create(SQL):
+    def __init__(self, name, schema):
+        self.name = name
+        self.schema = schema
+
+    def __repr__(self):
+        return "Create(" + str(self.table) + ", " + str(self.schema) + ")"
+
+class Alter(SQL):
+    def __init__(self, table, add: bool, thing):
+        self.table = table
+        self.add = add
+        self.thing = thing
+
+    def __repr__(self):
+        return "Alter(" + str(self.table) + ", ADD:" + str(self.add) + ", " + str(self.thing) + ")"
+        
+class Insert(SQL):
+    def __init__(self, table, entry):
+        self.table = table
+        self.entry = entry
+
+    def __repr__(self):
+        return "Insert(" + str(self.table) + ", " + str(self.entry) + ")"
+
+class Projection(SQL):
+    def __init__(self, cols, tree: SQL, distinct: bool):
+        self.columns = cols
+        self.subtree = tree
+        self.distinct = distinct
+
+    def __repr__(self):
+        return "PROJECT(" + ','.join(map(lambda x: str(x), self.columns)) + " FROM " + str(self.subtree) + ")"
+
+class Selection(SQL):
+    def __init__(self, tree: SQL, predicate: SQL):
         self.subtree = tree
         self.predicate = predicate
     
     def __repr__(self):
         return "SELECT(" + str(self.subtree) + " WHERE " + str(self.predicate) + ")"
 
-class CrossProduct(Algebra):
-    def __init__(self, left: Algebra, right: Algebra):
+class NatJoin(SQL):
+    def __init__(self, left, right):
         self.leftSubtree = left
         self.rightSubtree = right
 
     def __repr__(self):
-        return "CROSS(" + str(self.leftSubtree) + ", " + str(self.rightSubtree) + ")"
+        return "NATJOIN(" + str(self.leftSubtree) + ", " + str(self.rightSubtree) + ")"
+
+class InnerJoin(SQL):
+    def __init__(self, left, right, predicate):
+        self.leftSubtree = left
+        self.rightSubtree = right
+        self.predicate = predicate
+
+    def __repr__(self):
+        return "INNERJOIN(" + str(self.leftSubtree) + ", " + str(self.rightSubtree) + ", " + str(self.predicate) + ")"
+
+class Rename(SQL):
+    def __init__(self, table, name):
+        self.table = table
+        self.name = name
+
+    def __repr__(self):
+        return "RENAME(" + str(self.table) + ", " + str(self.name) + ")"
 
 class Predicate:
     def __init__(self) -> None:
@@ -54,17 +110,3 @@ class Identifier(Predicate):
 
     def __repr__(self):
         return str(self.id)
-
-class Number(Predicate):
-    def __init__(self, num) -> None:
-        self.num = num
-
-    def __repr__(self):
-        return str(self.num)
-
-class Boolean(Predicate):
-    def __init__(self, val) -> None:
-        self.val = val
-
-    def __repr__(self):
-        return str(self.val)

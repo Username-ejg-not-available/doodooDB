@@ -1,168 +1,279 @@
-query := SELECT idlist FROM idlist #1
-    | SELECT WILDCARD FROM idlist #23
-    | SELECT idlist FROM idlist WHERE predicate #24
-    | SELECT WILDCARD FROM idlist WHERE predicate #25
-idlist := ID #2
-    | idlist COMMA ID #3
-predicate := w PLUS w #4
-    | w MINUS w #5
-    | w
-w := x WILDCARD x #6
-    | x DIVIDE x #7
-    | x EXPONENT x #8
-    | x
-x := y EQUALS y #9
-    | y NEQUALS y #10
-    | y LESS y #11
-    | y LESSEQ y #12
-    | y GREATER y #13
-    | y GREATEREQ y #14
-    | y
-y := z AND z #15
-    | z OR z #16
-    | z
-z := NOT term #17
-    | MINUS term #18
-    | PLUS term #19
+cmd := DROP TABLE id SEMICOLON #1
+    | TRUNCATE TABLE id SEMICOLON #2
+    | create SEMICOLON
+    | alter SEMICOLON
+    | insert SEMICOLON
+    | query SEMICOLON
+create := CREATE TABLE id LPAREN newCols RPAREN #3
+alter := ALTER TABLE id ADD newCol #4
+    | ALTER TABLE id DROP id #5
+newCols := newCols COMMA newCol #6
+    | newCol
+newCol := id type modifiers #7
+type := INTTYPE #8
+    | STRINGTYPE LPAREN INT RPAREN #9
+    | DATETIMETYPE #10
+    | FLOATTYPE #11
+modifiers := modifier modifiers
+    | 
+modifier := NULL #12
+    | NOT NULL #13
+    | PRIMARYKEY #14
+    | AUTOINC #15
+insert := INSERT id LPAREN colList RPAREN VALUES LPAREN valueList RPAREN #16
+query := select from where
+select := SELECT cols #17
+from := FROM tableList #18
+where := WHERE predicate #19
+    |
+cols := DISTINCT colList #20
+    | WILDCARD #21
+    | colList
+colList := id #22
+    | colList COMMA id #23
+tableList := table #22
+    | tableList COMMA table #23
+table := table NATJOIN table AS id #24
+    | table INNERJOIN table ON predicate #25
+    | LPAREN query RPAREN AS id #26
+    | id AS id #26
+    | id
+id := ID #27
+predicate := eqexp AND eqexp #28
+    | eqexp OR eqexp #29
+    | eqexp
+eqexp := addexp EQUALS addexp #30
+    | addexp NEQUALS addexp #31
+    | addexp LESS addexp #32
+    | addexp LESSEQ addexp #33
+    | addexp GREATER addexp #34
+    | addexp GREATEREQ addexp #35
+    | addexp
+addexp := multexp PLUS multexp #36
+    | multexp MINUS multexp #37
+    | multexp
+multexp := unaryexp WILDCARD unaryexp #38
+    | unaryexp DIVIDE unaryexp #39
+    | unaryexp EXPONENT unaryexp #40
+    | unaryexp
+unaryexp := NOT term #41
+    | MINUS term #42
+    | PLUS term #43
     | term
 term := LPAREN predicate RPAREN
-    | NUMBER #20
-    | ID #21
-    | BOOL #22
+    | value
+    | id
+value := INT #44
+    | BOOL #45
+    | STRING #46
+    | FLOAT #47
+valueList := value #22
+    | valueList COMMA value #23
 
 ###
 
 requires {
+    import datetime
+    import table
     import parser.RelAlgeTree as RAT
 }
 
 #1 {
-    tables = p.semstack[0]
-    if len(tables) == 1:
-        p.semstack = [RAT.Projection(p.semstack[1], p.semstack[0])] + p.semstack[2:]
-    else:
-        t = RAT.Identifier(tables[0])
-        for table in tables[1:]:
-            t = RAT.CrossProduct(t, RAT.Identifier(table))
-        p.semstack = [RAT.Projection(p.semstack[1], t)] + p.semstack[2:]
+    p.semstack = [RAT.Drop(p.semstack[0])] + p.semstack[1:]
 }
 
 #2 {
-    p.semstack = [[p.currentToken]] + p.semstack
+    p.semstack = [RAT.Truncate(p.semstack[0])] + p.semstack[1:]
 }
 
 #3 {
-    p.semstack = [p.semstack[0] + [p.currentToken]] + p.semstack[1:]
+    p.semstack = [RAT.Create(p.semstack[1], p.semstack[0])] + p.semstack[2:]
 }
 
 #4 {
-    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '+')] + p.semstack[2:]
+    p.semstack = [RAT.Alter(p.semstack[1], True, p.semstack[0])] + p.semstack[2:]
 }
 
 #5 {
-    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '-')] + p.semstack[2:]
+    p.semstack = [RAT.Alter(p.semstack[1], False, p.semstack[0])] + p.semstack[2:]
 }
 
 #6 {
-    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '*')] + p.semstack[2:]
+    p.semstack = [{**p.semstack[1], **p.semstack[0]}] + p.semstack[2:]
 }
 
 #7 {
-    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '/')] + p.semstack[2:]
+    p.semstack = [{p.semstack[1].id: p.semstack[0]}] + p.semstack[2:]
 }
 
 #8 {
-    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '**')] + p.semstack[2:]
+    p.semstack = [[int]] + p.semstack
 }
 
 #9 {
-    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '=')] + p.semstack[2:]
+    p.semstack = [[str]] + p.semstack
 }
 
 #10 {
-    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '<>')] + p.semstack[2:]
+    p.semstack = [[datetime.datetime]] + p.semstack
 }
 
 #11 {
-    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '<')] + p.semstack[2:]
+    p.semstack = [[float]] + p.semstack
 }
 
 #12 {
-    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '<=')] + p.semstack[2:]
+    p.semstack = [p.semstack[0] + [table.Schema.NULL]] + p.semstack[1:]
 }
 
 #13 {
-    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '>')] + p.semstack[2:]
+    p.semstack = [p.semstack[0] + [table.Schema.NULLNT]] + p.semstack[1:]
 }
 
 #14 {
-    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '>=')] + p.semstack[2:]
+    p.semstack = [p.semstack[0] + [table.Schema.PRIMARY_KEY]] + p.semstack[1:]
 }
 
 #15 {
-    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], 'AND')] + p.semstack[2:]
+    p.semstack = [p.semstack[0] + [table.Schema.INCREMENT]] + p.semstack[1:]
 }
 
 #16 {
-    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], 'OR')] + p.semstack[2:]
+    entry = dict(zip(map(lambda x: x.id, p.semstack[1]), p.semstack[0]))
+    p.semstack = [RAT.Insert(p.semstack[2], entry)] + p.semstack[3:]
 }
 
 #17 {
-    p.semstack = [RAT.Unary(p.semstack[0], 'NOT')] + p.semstack[1:]
+    if p.semstack[0] == 'WILDCARD':
+        p.semstack = p.semstack[1:]
+    elif p.semstack[0] == 'DISTINCT':
+        p.semstack = [RAT.Projection(p.semstack[1], None, True)] + p.semstack[2:]
+    else:
+        p.semstack = [RAT.Projection(p.semstack[0], None, False)] + p.semstack[1:]
 }
 
 #18 {
-    p.semstack = [RAT.Unary(p.semstack[0], '-')] + p.semstack[1:]
+    if len(p.semstack) > 1 and isinstance(p.semstack[1], RAT.Projection) and p.semstack[1].subtree == None:
+        p.semstack[1].subtree = p.semstack[0]
+        p.semstack = p.semstack[1:]
 }
 
 #19 {
-    p.semstack = [RAT.Unary(p.semstack[0], '+')] + p.semstack[1:]
+    if isinstance(p.semstack[1], RAT.Projection):
+        p.semstack[1].subtree = RAT.Selection(p.semstack[1].subtree, p.semstack[0])
+        p.semstack = p.semstack[1:]
+    else:
+        p.semstack = [RAT.Selection(p.semstack[1], p.semstack[0])] + p.semstack[2:]
 }
 
 #20 {
-    p.semstack = [RAT.Number(p.currentToken)] + p.semstack
+    p.semstack = ["DISTINCT"] + p.semstack
 }
 
 #21 {
-    p.semstack = [RAT.Identifier(p.currentToken)] + p.semstack
+    p.semstack = ["WILDCARD"] + p.semstack
 }
 
 #22 {
-    p.semstack = [RAT.Boolean(p.currentToken)] + p.semstack
+    p.semstack = [[p.semstack[0]]] + p.semstack[1:]
 }
 
 #23 {
-    tables = p.semstack[0]
-    t = RAT.Identifier(tables[0])
-    if len(tables) == 1:
-        p.semstack = [t] + p.semstack[1:]
-    else:
-        for table in tables[1:]:
-            t = RAT.CrossProduct(t, RAT.Identifier(table))
-        p.semstack = [t] + p.semstack[1:]
+    p.semstack = [p.semstack[1] + [p.semstack[0]]] + p.semstack[2:]
 }
 
 #24 {
-    tables = p.semstack[1]
-    t = RAT.Identifier(tables[0])
-    if len(tables) == 1:
-        sel = RAT.Selection(t, p.semstack[0])
-        p.semstack = [RAT.Projection(p.semstack[2], sel)] + p.semstack[3:]
-    else:
-        for table in tables[1:]:
-            t = RAT.CrossProduct(t, RAT.Identifier(table))
-        sel = RAT.Selection(t, p.semstack[0])
-        p.semstack = [RAT.Projection(p.semstack[2], sel)] + p.semstack[3:]
+    p.semstack = [RAT.Rename(RAT.NatJoin(p.semstack[2], p.semstack[1]), p.semstack[0])] + p.semstack[3:]
 }
 
 #25 {
-    tables = p.semstack[1]
-    t = RAT.Identifier(tables[0])
-    if len(tables) == 1:
-        p.semstack = [RAT.Selection(t, p.semstack[0])] + p.semstack[2:]
-    else:
-        for table in tables[1:]:
-            t = RAT.CrossProduct(t, RAT.Identifier(table))
-        sel = RAT.Selection(t, p.semstack[0])
-        p.semstack = [sel] + p.semstack[2:]
+    p.semstack = [RAT.InnerJoin(p.semstack[2], p.semstack[1], p.semstack[0])] + p.semstack[3:]
+}
+
+#26 {
+    p.semstack = [RAT.Rename(p.semstack[1], p.semstack[0])] + p.semstack[2:]
+}
+
+#27 {
+    p.semstack = [RAT.Identifier(p.currentToken)] + p.semstack
+}
+
+#28 {
+    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], 'AND')] + p.semstack[2:]
+}
+
+#29 {
+    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], 'OR')] + p.semstack[2:]
+}
+
+#30 {
+    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '=')] + p.semstack[2:]
+}
+
+#31 {
+    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '<>')] + p.semstack[2:]
+}
+
+#32 {
+    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '<')] + p.semstack[2:]
+}
+
+#33 {
+    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '<=')] + p.semstack[2:]
+}
+
+#34 {
+    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '>')] + p.semstack[2:]
+}
+
+#35 {
+    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '>=')] + p.semstack[2:]
+}
+
+#36 {
+    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '+')] + p.semstack[2:]
+}
+
+#37 {
+    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '-')] + p.semstack[2:]
+}
+
+#38 {
+    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '*')] + p.semstack[2:]
+}
+
+#39 {
+    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '/')] + p.semstack[2:]
+}
+
+#40 {
+    p.semstack = [RAT.Binary(p.semstack[1], p.semstack[0], '**')] + p.semstack[2:]
+}
+
+#41 {
+    p.semstack = [RAT.Unary(p.semstack[0], 'NOT')] + p.semstack[1:]
+}
+
+#42 {
+    p.semstack = [RAT.Unary(p.semstack[0], '-')] + p.semstack[1:]
+}
+
+#43 {
+    p.semstack = [RAT.Unary(p.semstack[0], '+')] + p.semstack[1:]
+}
+
+#44 {
+    p.semstack = [int(p.currentToken)] + p.semstack
+}
+
+#45 {
+    p.semstack = [p.currentToken.lower()[0] == 't'] + p.semstack
+}
+
+#46 {
+    p.semstack = [p.currentToken[1:-1]] + p.semstack
+}
+
+#47 {
+    p.semstack = [float(p.currentToken)] + p.semstack
 }

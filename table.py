@@ -33,7 +33,7 @@ class Column:
         return ".".join(self.nameList[1:])
 
 class Schema:
-    NULL = "NULL\x18"
+    NULL = "NULL"
     NULLNT = "NULLNT\x18"
     PRIMARY_KEY = "PRIMARY_KEY\x18"
     INCREMENT = "INCREMENT\x18"
@@ -85,7 +85,6 @@ class Table:
                 elif self.rows == []:
                     self.columns[x] += [Cell(doodooTypes.getStartVal(self.schema.schema[x][0]), self.schema.schema[x])]
                 else:
-                    from functools import reduce
                     def maxCell(col):
                         maxx = 0
                         for c in col:
@@ -136,12 +135,10 @@ class Table:
         return res
 
     def _interpPred(self, row, pred) -> bool:
-        if isinstance(pred, RAT.Boolean):
-            return pred.val
+        if isinstance(pred, bool) or isinstance(pred, int) or isinstance(pred, float) or isinstance(pred, str):
+            return pred
         elif isinstance(pred, RAT.Identifier):
             return row[pred.id].data
-        elif isinstance(pred, RAT.Number):
-            return pred.num
         elif isinstance(pred, RAT.Unary):
             if pred.operator == '-':
                 return -self._interpPred(row, pred.exp)
@@ -167,9 +164,9 @@ class Table:
             elif pred.operator == '<=':
                 return float(self._interpPred(row, pred.left)) <= float(self._interpPred(row, pred.right))
             elif pred.operator == '=':
-                return float(self._interpPred(row, pred.left)) == float(self._interpPred(row, pred.right))
+                return self._interpPred(row, pred.left) == self._interpPred(row, pred.right)
             elif pred.operator == '<>':
-                return float(self._interpPred(row, pred.left)) != float(self._interpPred(row, pred.right))
+                return self._interpPred(row, pred.left) != self._interpPred(row, pred.right)
             elif pred.operator == '**':
                 return float(self._interpPred(row, pred.left)) ** float(self._interpPred(row, pred.right))
             elif pred.operator == 'AND':
@@ -199,7 +196,8 @@ class Table:
         res.colnames = cnames
 
         entries = [list(l.values()) + list(r.values()) for l in self.rows for r in other.rows]
-        entries = [dict(zip(map(lambda x: x.getPartialName(), cnames), e)) for e in entries]
+        entries = [dict(zip(map(lambda x: x.getPartialName(), cnames), \
+            map(lambda x: x.data, e))) for e in entries]
         for e in entries: res.insert(e)
         return res
 

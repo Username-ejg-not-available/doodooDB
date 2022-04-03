@@ -1,3 +1,4 @@
+from numpy import interp
 from table import *
 import interpret
 

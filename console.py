@@ -133,7 +133,7 @@ class Console:
                     if len(x) <= y: continue
                     if len(str(x[y]))+1 > colwidths[y]: colwidths[y] = len(str(x[y]))+1
         else: colwidths = [(self._vp_width - numcols -1) / numcols for _ in range(numcols)]
-        if colwidths == 0: return
+        if numcols == 0: return
 
         head = Console.Bars["TOP_LEFT"]
         for x in range(numcols):
@@ -156,6 +156,3 @@ class Console:
             else: tail += Console.Bars["BOTTOM_COL_JOIN"]
         out += tail + "\n"
         return out, self
-
-#c = Console()
-#c.grid([["q","r","titty"],["zoinks"],["Jinkies","t"]], True)

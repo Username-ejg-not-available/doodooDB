@@ -5,6 +5,7 @@ start = ""
 semstack = []
 table = {}
 actions = {}
+errorSets = {}
 currentToken = None
 
 class Parser:
@@ -17,7 +18,7 @@ class Parser:
         currentToken = None
 
     def parse(self):
-        global semstack
+        global semstack, errorSets
         while len(self.stack) != 0:
             next = table[self.stack[0]][self.tkstream[self.lookahead]['symbol']]
             #accept
@@ -25,11 +26,18 @@ class Parser:
                 if len(semstack)>0: return semstack[0]
                 else: 
                     print("CRINGE! Parse error: empty sem stack")
-                    exit(1)
+                    return# exit(1)
             #failure
             elif next == None:
-                print("Parse error: cringe token " + str(self.tkstream[self.lookahead]))
-                exit(1)
+                f = None
+                if self.lookahead == 0:
+                    f = str(errorSets['\x19'])
+                else:
+                    f = str(errorSets[self.tkstream[self.lookahead - 1]['symbol']])
+                print("Parse error " + str(self.tkstream[self.lookahead]['pos']) \
+                    + ": Found " + str(self.tkstream[self.lookahead]['symbol']).replace('\x18', '\\x18') \
+                    + ", Expected " + f)
+                return# exit(1)
             #shift/goto
             elif isinstance(next,str):
                 self.stack = [next] + self.stack
@@ -42,4 +50,4 @@ class Parser:
                     actions[self.stack[0]]()
                 self.stack = [table[self.stack[next[1]]][next[0]]] + self.stack[next[1]:]
         print("Parse Error: unexpected EOF")
-        exit(1)
+        return# exit(1)
