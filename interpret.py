@@ -62,7 +62,7 @@ def walk(tree: RAT.SQL) -> table.Table:
     elif isinstance(tree, RAT.Identifier):
         return table.tables[tree.id]
     elif isinstance(tree, list):
-        t = table.tables[tree[0].id]
+        t = walk(tree[0])
         for x in tree[1:]:
-            t = t.cross(table.tables[x.id])
+            t = t.cross(walk(x))
         return t

@@ -30,13 +30,14 @@ class Parser:
             #failure
             elif next == None:
                 f = None
-                if self.lookahead == 0:
-                    f = str(errorSets['\x19'])
+                state = list(filter(lambda x: x != '', self.stack[0].split(" ")))
+                if state[-1] == "●":
+                    f = str(errorSets["f" + state[0]])
                 else:
-                    f = str(errorSets[self.tkstream[self.lookahead - 1]['symbol']])
+                    f = str(errorSets[state[state.index("●") + 1]])
                 print("Parse error " + str(self.tkstream[self.lookahead]['pos']) \
                     + ": Found " + str(self.tkstream[self.lookahead]['symbol']).replace('\x18', '\\x18') \
-                    + ", Expected " + f)
+                    + ":" + str(self.tkstream[self.lookahead]['lexeme']) + ", Expected " + f)
                 return# exit(1)
             #shift/goto
             elif isinstance(next,str):

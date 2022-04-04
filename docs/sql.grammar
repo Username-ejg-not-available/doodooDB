@@ -36,7 +36,6 @@ tableList := table #22
 table := table NATJOIN table AS id #24
     | table INNERJOIN table ON predicate #25
     | LPAREN query RPAREN AS id #26
-    | id AS id #26
     | id
 id := ID #27
 predicate := eqexp AND eqexp #28
